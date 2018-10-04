@@ -12,14 +12,12 @@ third semester as a project of algorithms and data structures course.
 #include <stdio.h>
 #include <stdlib.h>
 
-
 #define ASCII_CHARACHTER 256
 
-
-typedef struct frequenciesTable {
+typedef struct element {
     unsigned char word;
     int frequencies;
-} FrequenciesTable;
+} Element;
 
 typedef struct treeNode {
     int start, end;
@@ -27,43 +25,54 @@ typedef struct treeNode {
     struct TreeNode *left;
 } TreeNode;
 
+void printMyArray(Element *pElement);
 
-void printMyArray(FrequenciesTable *pTable);
+void initializeTable(Element *pElement);
 
+void calculateFrequencies(FILE *file, Element *pElement);
 
-void initilizeTable(FILE *pIobuf, FrequenciesTable *pTable);
-
-void calculateFrequencies(FILE *file, FrequenciesTable *table);
+void orderDesc(Element *pElement);
 
 
 int main() {
     // memory allocation for an array of 256 elements (the frequencies' table)
-    FrequenciesTable *table = (FrequenciesTable *)malloc(ASCII_CHARACHTER * sizeof(FrequenciesTable));
-    FILE *file = fopen("prova.txt","rb");
-    initilizeTable(file, table);
-    calculateFrequencies(file,table);
+    Element *table = (Element *) malloc(ASCII_CHARACHTER * sizeof(Element));
+    FILE *file = fopen("immagine.tiff", "rb");
+    initializeTable(table);
+    calculateFrequencies(file, table);
+    printMyArray(table);
+    orderDesc(table);
+    printf("\nLa tabella ordinata:\n");
     printMyArray(table);
     return 0;
 }
 
-void initilizeTable(FILE *pIobuf, FrequenciesTable *pTable) {
+void initializeTable(Element *pElement) {
     for (int i = 0; i < ASCII_CHARACHTER; ++i) {
-        pTable[i].word=i;
-        pTable[i].frequencies=0;
+        pElement[i].word = (unsigned char) i;
+        pElement[i].frequencies = 0;
     }
 }
 
-
-
-void printMyArray(FrequenciesTable *pTable) {
+void printMyArray(Element *pElement) {
     for (int i = 0; i < ASCII_CHARACHTER; ++i) {
-        printf("carattere: %d  %d\n", pTable[i].word,pTable[i].frequencies);
+        printf("word:  %-6d  %-6d\n", pElement[i].word, pElement[i].frequencies);
     }
 }
 
-void calculateFrequencies(FILE *file, FrequenciesTable *table) {
-    int ch ;
-    while ((ch = fgetc(file)) != EOF){
-        table[ch].frequencies++;
+void calculateFrequencies(FILE *file, Element *pElement) {
+    int ch;
+    while ((ch = fgetc(file)) != EOF) {
+        pElement[ch].frequencies++;
     }
+}
+
+int compare(const void *a, const void *b) {
+    Element *element1 = (Element *) a;
+    Element *element2 = (Element *) b;
+    return (element2->frequencies - element1->frequencies);
+}
+
+void orderDesc(Element *pElement) {
+    qsort(pElement, ASCII_CHARACHTER, sizeof(Element), compare);
 }
