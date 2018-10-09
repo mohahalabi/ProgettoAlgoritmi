@@ -19,11 +19,11 @@ typedef struct element {
     int frequencies;
 } Element;
 
-typedef struct treeNode {
+typedef struct node {
     int start, end;
-    struct TreeNode *right;
-    struct TreeNode *left;
-} TreeNode;
+    struct TreeNode *rightChild;
+    struct TreeNode *leftChild;
+} Node;
 
 void printMyArray(Element *pElement);
 
@@ -35,7 +35,7 @@ void orderDesc(Element *pElement);
 
 int getSplitIndex(Element *pElement);
 
-TreeNode *createNode(TreeNode *lNode, TreeNode *rNode, int start, int end);
+Node *createNode(Node *lNode, Node *rNode, int start, int end);
 
 void createTheTree();
 
@@ -43,7 +43,7 @@ void createTheTree();
 int main() {
     // memory allocation for an array of 256 elements (the frequencies' table)
     Element *table = (Element *) malloc(ASCII_CHARACHTER * sizeof(Element));
-    FILE *file = fopen("libro.pdf", "rb");
+    FILE *file = fopen("307Mb.pdf", "rb");
     initializeTable(table);
     calculateFrequencies(file, table);
     printMyArray(table);
@@ -91,15 +91,15 @@ int getSplitIndex(Element *pElement) {
         sumOfFrequencies = sumOfFrequencies + pElement[i].frequencies;
     }
     divideIndex = sumOfFrequencies / 2;
-//  printf(" somma delle frequenze = %ld\n", sumOfFrequencies);
-//  printf(" dove dividere:  %d\n", divideIndex);
+    printf("somma delle frequenze = %ld\n", sumOfFrequencies);
+    printf("dove dividere:  %d\n", divideIndex);
     return (int) divideIndex;
 }
 
-TreeNode *createNode(TreeNode *lNode, TreeNode *rNode, int start, int end) {
-    TreeNode *node = (TreeNode *) malloc(sizeof(TreeNode));
-    node->left = lNode;
-    node->right = rNode;
+Node *createNode(Node *lNode, Node *rNode, int start, int end) {
+    Node *node = (Node *) malloc(sizeof(Node));
+    node->leftChild = lNode;
+    node->rightChild = rNode;
     node->start = start;
     node->end = end;
     return node;
