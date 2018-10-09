@@ -33,17 +33,24 @@ void calculateFrequencies(FILE *file, Element *pElement);
 
 void orderDesc(Element *pElement);
 
+int getSplitIndex(Element *pElement);
+
+TreeNode *createNode(TreeNode *lNode, TreeNode *rNode, int start, int end);
+
+void createTheTree();
+
 
 int main() {
     // memory allocation for an array of 256 elements (the frequencies' table)
     Element *table = (Element *) malloc(ASCII_CHARACHTER * sizeof(Element));
-    FILE *file = fopen("immagine.tiff", "rb");
+    FILE *file = fopen("libro.pdf", "rb");
     initializeTable(table);
     calculateFrequencies(file, table);
     printMyArray(table);
     orderDesc(table);
     printf("\nLa tabella ordinata:\n");
     printMyArray(table);
+    getSplitIndex(table);
     return 0;
 }
 
@@ -75,4 +82,25 @@ int compare(const void *a, const void *b) {
 
 void orderDesc(Element *pElement) {
     qsort(pElement, ASCII_CHARACHTER, sizeof(Element), compare);
+}
+
+int getSplitIndex(Element *pElement) {
+    long sumOfFrequencies = 0;
+    long divideIndex;
+    for (int i = 0; i < ASCII_CHARACHTER; ++i) {
+        sumOfFrequencies = sumOfFrequencies + pElement[i].frequencies;
+    }
+    divideIndex = sumOfFrequencies / 2;
+//  printf(" somma delle frequenze = %ld\n", sumOfFrequencies);
+//  printf(" dove dividere:  %d\n", divideIndex);
+    return (int) divideIndex;
+}
+
+TreeNode *createNode(TreeNode *lNode, TreeNode *rNode, int start, int end) {
+    TreeNode *node = (TreeNode *) malloc(sizeof(TreeNode));
+    node->left = lNode;
+    node->right = rNode;
+    node->start = start;
+    node->end = end;
+    return node;
 }
