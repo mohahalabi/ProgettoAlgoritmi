@@ -12,17 +12,17 @@ third semester as a project of algorithms and data structures course.
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ASCII_CODE 256
+#define MAX_CODE 256
 
-typedef struct {
+typedef struct element {
     unsigned char word;
     int frequencies;
 } Element;
 
-typedef struct {
+typedef struct node {
     int start, end;
-    struct Node *rightChild;
-    struct Node *leftChild;
+    struct node *rightChild;
+    struct node *leftChild;
 } Node;
 
 void printMyArray(Element *pElement);
@@ -33,6 +33,8 @@ void calculateFrequencies(FILE *file, Element *pElement);
 
 void orderDesc(Element *pElement);
 
+long sumFrequencies(Element *pElement);
+
 int getSplitIndex(Element *pElement);
 
 Node *createNode(Node *lNode, Node *rNode, int start, int end);
@@ -41,14 +43,14 @@ void createTheTree(Element *pElement, Node *root);
 
 
 void initializeTable(Element *pElement) {
-    for (int i = 0; i < ASCII_CODE; ++i) {
+    for (int i = 0; i < MAX_CODE; ++i) {
         pElement[i].word = (unsigned char) i;
         pElement[i].frequencies = 0;
     }
 }
 
 void printMyArray(Element *pElement) {
-    for (int i = 0; i < ASCII_CODE; ++i) {
+    for (int i = 0; i < MAX_CODE; ++i) {
         printf("word:  %-6d  %-6d\n", pElement[i].word, pElement[i].frequencies);
     }
 }
@@ -67,27 +69,31 @@ int compare(const void *a, const void *b) {
 }
 
 void orderDesc(Element *pElement) {
-    qsort(pElement, ASCII_CODE, sizeof(Element), compare);
+    qsort(pElement, MAX_CODE, sizeof(Element), compare);
+}
+
+long sumFrequencies(Element *pElement) {
+    long sumOfFrequencies = 0;
+    for (int i = 0; i < MAX_CODE; ++i) {
+        sumOfFrequencies = sumOfFrequencies + pElement[i].frequencies;
+    }
+    return sumOfFrequencies;
 }
 
 int getSplitIndex(Element *pElement) {
-    long sumOfFrequencies = 0;
-    long splitIndex, halfOfSum;
+    long sumOfFrequencies = sumFrequencies(pElement);
+    int splitIndex = 0;
+    long halfOfSum;
     long sum = 0;
-    for (int i = 0; i < ASCII_CODE; ++i) {
-        sumOfFrequencies = sumOfFrequencies + pElement[i].frequencies;
-    }
     halfOfSum = sumOfFrequencies / 2;
-    for (int j = 0; j < ASCII_CODE; ++j) {
+    for (int j = 0; j < MAX_CODE; ++j) {
         sum = sum + pElement[j].frequencies;
         if (sum >= halfOfSum) {
             splitIndex = j + 1;
-            printf("somma delle frequenze = %ld\n", sumOfFrequencies);
-            printf("dove dividere:  %ld\n", splitIndex);
             return splitIndex;
         }
     }
-
+    return splitIndex;
 }
 
 Node *createNode(Node *lNode, Node *rNode, int start, int end) {
@@ -105,7 +111,6 @@ void createTheTree(Element *pElement, Node *root) {
     if (root->start == root->end) {
         return;
     }
-
     if (root->start == (root->end - 1)) {
         Node *leftNode = createNode(NULL, NULL, root->start, root->start);
         Node *rightNode = createNode(NULL, NULL, root->end, root->end);
@@ -124,18 +129,21 @@ void createTheTree(Element *pElement, Node *root) {
 
 }
 
+// main procedure is currently used to test the correct
+// implementation of the other procedures and functions
 int main() {
 
-    Element *table = (Element *) malloc(ASCII_CODE * sizeof(Element));
-    FILE *file = fopen("daComprimere", "rb");
+    Element *table = (Element *) malloc(MAX_CODE * sizeof(Element));
+    FILE *file = fopen("image.jpg", "rb");
     initializeTable(table);
     calculateFrequencies(file, table);
     printMyArray(table);
     orderDesc(table);
     printf("\nLa tabella ordinata:\n");
     printMyArray(table);
-    getSplitIndex(table);
-    //Node *root = createNode(NULL,NULL,0,ASCII_CODE-1);
-    //createTheTree(table,root);
+    printf("Somma frequenze: %ld\n", sumFrequencies(table));
+    printf("Dove splittare: %d\n", getSplitIndex(table));
+    Node *root = createNode(NULL, NULL, 0, MAX_CODE - 1);
+    createTheTree(table, root);
     return 0;
 }
