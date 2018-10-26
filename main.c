@@ -16,6 +16,9 @@ third semester as a project of algorithms and data structures course.
 
 #define MAX_CODE 256
 
+
+/******************************* Structures ********************************/
+
 typedef struct element {
     unsigned char word;
     int frequencies;
@@ -27,46 +30,57 @@ typedef struct node {
     struct node *leftChild;
 } Node;
 
-typedef struct arrayOfString {
+typedef struct code {
     char code[MAX_CODE];
-} ArrayOfString;
+} Code;
 
-void printMyArray(Element *pElement);
 
-void initializeTable(Element *pElement);
+/********************** Functions Declaration ******************************/
 
-void calculateFrequencies(FILE *file, Element *pElement);
+void printMyArray(Element *ptrElement);
 
-void orderDesc(Element *pElement);
+void initializeTable(Element *ptrElement);
 
-long sumFrequencies(Element *pElement, Node *root);
+void calculateFrequencies(FILE *file, Element *ptrElement);
 
-int getSplitIndex(Element *pElement, Node *root);
+void orderDesc(Element *ptrElement);
+
+long sumFrequencies(Element *ptrElement, Node *root);
+
+int getSplitIndex(Element *ptrElement, Node *root);
 
 Node *createNode(Node *lNode, Node *rNode, int start, int end);
 
-void createTheTree(Element *pElement, Node *root);
+void createEncodingTree(Element *ptrElement, Node *root);
+
+void encode(Code *ptrCodes, Node *root);
+
+void writeDictionary(Element *ptrElement, Code *ptrDictionary, Code *ptrCodes);
 
 
-void initializeTable(Element *pElement) {
+/************************ Functions Definition *****************************/
+
+void initializeTable(Element *ptrElement) {
     for (int i = 0; i < MAX_CODE; ++i) {
-        pElement[i].word = (unsigned char) i;
-        pElement[i].frequencies = 0;
+        ptrElement[i].word = (unsigned char) i;
+        ptrElement[i].frequencies = 0;
     }
 }
 
-void printMyArray(Element *pElement) {
+void printMyArray(Element *ptrElement) {
     for (int i = 0; i < MAX_CODE; ++i) {
-        printf("word:  %-6d  %-6d\n", pElement[i].word, pElement[i].frequencies);
+        printf("word:  %-6d  %-6d\n", ptrElement[i].word, ptrElement[i].frequencies);
     }
 }
 
-void calculateFrequencies(FILE *file, Element *pElement) {
+
+void calculateFrequencies(FILE *file, Element *ptrElement) {
     int ch;
     while ((ch = fgetc(file)) != EOF) {
-        pElement[ch].frequencies++;
+        ptrElement[ch].frequencies++;
     }
 }
+
 
 int compare(const void *a, const void *b) {
     Element *element1 = (Element *) a;
@@ -74,26 +88,29 @@ int compare(const void *a, const void *b) {
     return (element2->frequencies - element1->frequencies);
 }
 
-void orderDesc(Element *pElement) {
-    qsort(pElement, MAX_CODE, sizeof(Element), compare);
+
+void orderDesc(Element *ptrElement) {
+    qsort(ptrElement, MAX_CODE, sizeof(Element), compare);
 }
 
-long sumFrequencies(Element *pElement, Node *root) {
+
+long sumFrequencies(Element *ptrElement, Node *root) {
     long sumOfFrequencies = 0;
     for (int i = root->start; i < root->end; ++i) {
-        sumOfFrequencies = sumOfFrequencies + pElement[i].frequencies;
+        sumOfFrequencies = sumOfFrequencies + ptrElement[i].frequencies;
     }
     return sumOfFrequencies;
 }
 
-int getSplitIndex(Element *pElement, Node *root) {
-    long sumOfFrequencies = sumFrequencies(pElement, root);
+
+int getSplitIndex(Element *ptrElement, Node *root) {
+    long sumOfFrequencies = sumFrequencies(ptrElement, root);
     int splitIndex = 0;
     long halfOfSum;
     long sum = 0;
     halfOfSum = sumOfFrequencies / 2;
     for (int j = root->start; j < root->end; ++j) {
-        sum = sum + pElement[j].frequencies;
+        sum = sum + ptrElement[j].frequencies;
         if (sum >= halfOfSum) {
             splitIndex = j + 1;
             return splitIndex;
@@ -101,6 +118,7 @@ int getSplitIndex(Element *pElement, Node *root) {
     }
     return splitIndex;
 }
+
 
 Node *createNode(Node *lNode, Node *rNode, int start, int end) {
     Node *node = (Node *) malloc(sizeof(Node));
@@ -111,8 +129,9 @@ Node *createNode(Node *lNode, Node *rNode, int start, int end) {
     return node;
 }
 
-void createTheTree(Element *pElement, Node *root) {
-    int splitIndex = getSplitIndex(pElement, root);
+
+void createEncodingTree(Element *ptrElement, Node *root) {
+    int splitIndex = getSplitIndex(ptrElement, root);
 
     if (root->start == root->end) {
         return;
@@ -122,17 +141,51 @@ void createTheTree(Element *pElement, Node *root) {
         Node *rightNode = createNode(NULL, NULL, root->end, root->end);
         root->leftChild = leftNode;
         root->rightChild = rightNode;
-        return;
+        //return;
     } else {
         Node *leftNode = createNode(NULL, NULL, root->start, splitIndex);
         Node *rightNode = createNode(NULL, NULL, splitIndex + 1, root->end);
         root->leftChild = leftNode;
         root->rightChild = rightNode;
-        createTheTree(pElement, root->leftChild);
-        createTheTree(pElement, root->rightChild);
+        createEncodingTree(ptrElement, root->leftChild);
+        createEncodingTree(ptrElement, root->rightChild);
     }
 
+}
 
+
+char charactersHolder[256] = "";
+
+void encode(Code *ptrCodes, Node *root) {
+    if (root->leftChild != NULL) {
+        strcat(charactersHolder, "0");
+        encode(ptrCodes, root->leftChild);
+        charactersHolder[strlen(charactersHolder) - 1] = '\0';
+        strcat(charactersHolder, "1");
+        encode(ptrCodes, root->rightChild);
+        charactersHolder[strlen(charactersHolder) - 1] = '\0';
+    } else {
+        strcpy(ptrCodes[root->start].code, charactersHolder);
+    }
+}
+
+
+void writeDictionary(Element *ptrElement, Code *ptrDictionary, Code *ptrCodes) {
+    for (int i = 0; i < MAX_CODE; ++i) {
+        strcpy(ptrDictionary[ptrElement[i].word].code, ptrCodes[i].code);
+    }
+
+}
+
+
+void print(Code *codes) {
+    for (int i = 0; i < MAX_CODE; ++i) {
+        printf("code of %d: ", i);
+        for (int j = 0; codes[i].code[j] != '\0'; ++j) {
+            printf("%c", codes[i].code[j]);
+        }
+        printf("\n");
+    }
 }
 
 // main procedure is currently used to test the correct
@@ -140,16 +193,24 @@ void createTheTree(Element *pElement, Node *root) {
 int main() {
 
     Element *table = (Element *) malloc(MAX_CODE * sizeof(Element));
-    FILE *file = fopen("prova.txt", "rb");
+    Code *codes = (Code *) malloc(MAX_CODE * sizeof(Code));
+    Code *dictionary = (Code *) malloc(MAX_CODE * sizeof(Code));
+    FILE *file = fopen("alice.txt", "rb");
     initializeTable(table);
     calculateFrequencies(file, table);
     printMyArray(table);
     orderDesc(table);
-    printf("\nLa tabella ordinata:\n");
+    printf("\nOrdered table(by frequencies):\n");
     printMyArray(table);
     Node *root = createNode(NULL, NULL, 0, MAX_CODE - 1);
-    printf("Somma frequenze: %ld\n", sumFrequencies(table, root));
-    printf("Dove splittare: %d\n", getSplitIndex(table, root));
-    createTheTree(table, root);
+    printf("\nSum of frequencies: %ld\n", sumFrequencies(table, root));
+    printf("Split index: %d\n\n", getSplitIndex(table, root));
+
+    createEncodingTree(table, root);
+    encode(codes, root);
+    writeDictionary(table, dictionary, codes);
+
+    print(dictionary);
+
     return 0;
 }
