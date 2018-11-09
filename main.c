@@ -227,8 +227,8 @@ void writeDictionaryOnCompressedFile(Code *dict, FILE *outputFile) {
 
     for (int i = 0; i < MAX_CODE; ++i) {
         int length = strlen(dict[i].code);
+        reduceAndWriteBits(length, outputFile);
         for (int j = 0; j < length; ++j) {
-            reduceAndWriteBits(length, outputFile);
             addBit((unsigned char) dict[i].code[j], outputFile);
             bitsNumber++;
         }
