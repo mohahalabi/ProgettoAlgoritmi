@@ -21,7 +21,7 @@ third semester as a project of algorithms and data structures course.
 
 typedef struct element {
     unsigned char word;
-    int frequencies;
+    int frequency;
 } Element;
 
 typedef struct node {
@@ -37,47 +37,56 @@ typedef struct code {
 
 /********************** Functions Declaration ******************************/
 
-void printMyArray(Element *ptrElement);
+void printTable(Element *ptrElements);
 
-void initializeTable(Element *ptrElement);
+void initializeTable(Element *ptrElements);
 
-void calculateFrequencies(FILE *file, Element *ptrElement);
+void calculateFrequencies(FILE *file, Element *ptrElements);
 
-void orderDesc(Element *ptrElement);
+void orderDesc(Element *ptrElements);
 
-long sumFrequencies(Element *ptrElement, Node *root);
+long sumFrequencies(Element *ptrElements, Node *root);
 
-int getSplitIndex(Element *ptrElement, Node *root);
+int getSplitIndex(Element *ptrElements, Node *root);
 
 Node *createNode(Node *lNode, Node *rNode, int start, int end);
 
-void createEncodingTree(Element *ptrElement, Node *root);
+void createEncodingTree(Element *ptrElements, Node *root);
 
 void encode(Code *ptrCodes, Node *root);
 
-void writeDictionary(Element *ptrElement, Code *ptrDictionary, Code *ptrCodes);
+void writeDictionary(Element *ptrElements, Code *ptrDictionary, Code *ptrCodes);
 
+void writeByte(FILE *file);
+
+void addBit(unsigned char bit, FILE *file);
+
+void reduceAndWriteBits(int n, FILE *file);
+
+void writeDictionaryOnCompressedFile(Code *dict, FILE *outputFile);
+
+void writeCompressedFile(FILE *inputFile, FILE *outputFile, Code *dic);
 
 /************************ Functions Definition *****************************/
 
-void initializeTable(Element *ptrElement) {
+void initializeTable(Element *ptrElements) {
     for (int i = 0; i < MAX_CODE; ++i) {
-        ptrElement[i].word = (unsigned char) i;
-        ptrElement[i].frequencies = 0;
+        ptrElements[i].word = (unsigned char) i;
+        ptrElements[i].frequency = 0;
     }
 }
 
-void printMyArray(Element *ptrElement) {
+void printTable(Element *ptrElements) {
     for (int i = 0; i < MAX_CODE; ++i) {
-        printf("word:  %-6d  %-6d\n", ptrElement[i].word, ptrElement[i].frequencies);
+        printf("word:  %-6d  %-6d\n", ptrElements[i].word, ptrElements[i].frequency);
     }
 }
 
 
-void calculateFrequencies(FILE *file, Element *ptrElement) {
+void calculateFrequencies(FILE *file, Element *ptrElements) {
     int ch;
     while ((ch = fgetc(file)) != EOF) {
-        ptrElement[ch].frequencies++;
+        ptrElements[ch].frequency++;
     }
 }
 
@@ -85,32 +94,32 @@ void calculateFrequencies(FILE *file, Element *ptrElement) {
 int compare(const void *a, const void *b) {
     Element *element1 = (Element *) a;
     Element *element2 = (Element *) b;
-    return (element2->frequencies - element1->frequencies);
+    return (element2->frequency - element1->frequency);
 }
 
 
-void orderDesc(Element *ptrElement) {
-    qsort(ptrElement, MAX_CODE, sizeof(Element), compare);
+void orderDesc(Element *ptrElements) {
+    qsort(ptrElements, MAX_CODE, sizeof(Element), compare);
 }
 
 
-long sumFrequencies(Element *ptrElement, Node *root) {
+long sumFrequencies(Element *ptrElements, Node *root) {
     long sumOfFrequencies = 0;
     for (int i = root->start; i < root->end; ++i) {
-        sumOfFrequencies = sumOfFrequencies + ptrElement[i].frequencies;
+        sumOfFrequencies = sumOfFrequencies + ptrElements[i].frequency;
     }
     return sumOfFrequencies;
 }
 
 
-int getSplitIndex(Element *ptrElement, Node *root) {
-    long sumOfFrequencies = sumFrequencies(ptrElement, root);
+int getSplitIndex(Element *ptrElements, Node *root) {
+    long sumOfFrequencies = sumFrequencies(ptrElements, root);
     int splitIndex = 0;
     long halfOfSum;
     long sum = 0;
     halfOfSum = sumOfFrequencies / 2;
     for (int j = root->start; j < root->end; ++j) {
-        sum = sum + ptrElement[j].frequencies;
+        sum = sum + ptrElements[j].frequency;
         if (sum >= halfOfSum) {
             splitIndex = j + 1;
             return splitIndex;
@@ -130,8 +139,8 @@ Node *createNode(Node *lNode, Node *rNode, int start, int end) {
 }
 
 
-void createEncodingTree(Element *ptrElement, Node *root) {
-    int splitIndex = getSplitIndex(ptrElement, root);
+void createEncodingTree(Element *ptrElements, Node *root) {
+    int splitIndex = getSplitIndex(ptrElements, root);
 
     if (root->start == root->end) {
         return;
@@ -141,14 +150,13 @@ void createEncodingTree(Element *ptrElement, Node *root) {
         Node *rightNode = createNode(NULL, NULL, root->end, root->end);
         root->leftChild = leftNode;
         root->rightChild = rightNode;
-        //return;
     } else {
         Node *leftNode = createNode(NULL, NULL, root->start, splitIndex);
         Node *rightNode = createNode(NULL, NULL, splitIndex + 1, root->end);
         root->leftChild = leftNode;
         root->rightChild = rightNode;
-        createEncodingTree(ptrElement, root->leftChild);
-        createEncodingTree(ptrElement, root->rightChild);
+        createEncodingTree(ptrElements, root->leftChild);
+        createEncodingTree(ptrElements, root->rightChild);
     }
 
 }
@@ -170,11 +178,77 @@ void encode(Code *ptrCodes, Node *root) {
 }
 
 
-void writeDictionary(Element *ptrElement, Code *ptrDictionary, Code *ptrCodes) {
+void writeDictionary(Element *ptrElements, Code *ptrDictionary, Code *ptrCodes) {
     for (int i = 0; i < MAX_CODE; ++i) {
-        strcpy(ptrDictionary[ptrElement[i].word].code, ptrCodes[i].code);
+        strcpy(ptrDictionary[ptrElements[i].word].code, ptrCodes[i].code);
     }
+}
 
+
+long bitsNumber = 0;    // All the bits written on the compressed file
+unsigned char byte;     // Single byte to write on the compressed file
+int currentBit = 0;     // The current bit to add, when its value is 8, I reset it to 0
+
+void writeByte(FILE *file) {
+    fputc(byte, file);
+    currentBit = 0;
+    byte = 0;
+}
+
+
+void addBit(unsigned char bit, FILE *file) {
+    currentBit++;
+    byte = byte << 1 | bit;
+    if (currentBit == 8) {
+        writeByte(file);
+    }
+}
+
+
+void reduceAndWriteBits(int n, FILE *file) {
+
+    // Size of an integer is assumed to be 32 bits
+    // but my number can't be more than 255 =2^8 -1, so I extract
+    // just the 8 LSB from 32 bits
+    for (int i = 7; i >= 0; --i) {
+        int k = n >> i;
+        if (k & 1)
+            addBit(1, file);
+        else
+            addBit(0, file);
+        bitsNumber++;
+    }
+}
+
+// I write the dictionary like that: 8 bits to indicate how many bits the word
+// is long, and then directly I write the word.
+// for example: the word 1010 (its length is 4 bits) is coded: 0100 1010
+void writeDictionaryOnCompressedFile(Code *dict, FILE *outputFile) {
+
+    for (int i = 0; i < MAX_CODE; ++i) {
+        int length = strlen(dict[i].code);
+        for (int j = 0; j < length; ++j) {
+            reduceAndWriteBits(length, outputFile);
+            addBit((unsigned char) dict[i].code[j], outputFile);
+            bitsNumber++;
+        }
+    }
+}
+
+
+void writeCompressedFile(FILE *inputFile, FILE *outputFile, Code *dic) {
+    int ch;
+    writeDictionaryOnCompressedFile(dic, outputFile);
+    fseek(inputFile, 0, SEEK_SET);
+
+    while ((ch = fgetc(inputFile)) != EOF) {
+        int length = strlen(dic[ch].code);
+        bitsNumber += length;
+        for (int i = 0; i < length; ++i) {
+            addBit((unsigned char) dic[ch].code[i], outputFile);
+        }
+    }
+    fclose(outputFile);
 }
 
 
@@ -198,10 +272,10 @@ int main() {
     FILE *file = fopen("alice.txt", "rb");
     initializeTable(table);
     calculateFrequencies(file, table);
-    printMyArray(table);
+    printTable(table);
     orderDesc(table);
     printf("\nOrdered table(by frequencies):\n");
-    printMyArray(table);
+    printTable(table);
     Node *root = createNode(NULL, NULL, 0, MAX_CODE - 1);
     printf("\nSum of frequencies: %ld\n", sumFrequencies(table, root));
     printf("Split index: %d\n\n", getSplitIndex(table, root));
@@ -209,8 +283,17 @@ int main() {
     createEncodingTree(table, root);
     encode(codes, root);
     writeDictionary(table, dictionary, codes);
-
     print(dictionary);
+
+    FILE *compressed = fopen("compressed", "wb");
+
+    writeCompressedFile(file, compressed, dictionary);
+
+    printf("size of compressed file (in bits): %ld", bitsNumber);
+
+    // Compression has been done! but still need some tests
+    // Consider using fread() and fwrite() instead of fgetc() and fputc()
+    //TODO: Decompression
 
     return 0;
 }
