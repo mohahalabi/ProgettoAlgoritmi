@@ -65,6 +65,8 @@ void reduceAndWriteBits(int n, FILE *file);
 
 void writeDictionaryOnCompressedFile(Code *dict, FILE *outputFile);
 
+void writeDictionaryCanonica(Code *dict, FILE *outputFile);
+
 void writeCompressedFile(FILE *inputFile, FILE *outputFile, Code *dic);
 
 /************************ Functions Definition *****************************/
@@ -222,7 +224,7 @@ void reduceAndWriteBits(int n, FILE *file) {
 
 // I write the dictionary like that: 8 bits to indicate how many bits the word
 // is long, and then directly I write the word.
-// for example: the word 1010 (its length is 4 bits) is coded: 0100 1010
+// for example: the word 1010 (its length is 4 bits) is coded: 00000100 1010
 void writeDictionaryOnCompressedFile(Code *dict, FILE *outputFile) {
 
     for (int i = 0; i < MAX_CODE; ++i) {
@@ -235,18 +237,29 @@ void writeDictionaryOnCompressedFile(Code *dict, FILE *outputFile) {
     }
 }
 
+unsigned char array[MAX_CODE];
+
+void writeDictionaryCanonica(Code *dict, FILE *outputFile) {
+    for (int i = 0; i < MAX_CODE; ++i) {
+        int length = strlen(dict[i].code);
+        reduceAndWriteBits(length, outputFile);
+        array[i] = (unsigned char) length;
+        bitsNumber += 8;
+    }
+}
+
 
 void writeCompressedFile(FILE *inputFile, FILE *outputFile, Code *dic) {
     int ch;
-    writeDictionaryOnCompressedFile(dic, outputFile);
+    //writeDictionaryOnCompressedFile(dic, outputFile);
     fseek(inputFile, 0, SEEK_SET);
-
+    writeDictionaryCanonica(dic, outputFile);
     while ((ch = fgetc(inputFile)) != EOF) {
         int length = strlen(dic[ch].code);
-        bitsNumber += length;
         for (int i = 0; i < length; ++i) {
             addBit((unsigned char) dic[ch].code[i], outputFile);
         }
+        bitsNumber += length;
     }
     fclose(outputFile);
 }
@@ -290,9 +303,14 @@ int main() {
     writeCompressedFile(file, compressed, dictionary);
 
     printf("size of compressed file (in bits): %ld", bitsNumber);
-
-    // Compression has been done! but still need some tests
+    for (int i = 0; i < MAX_CODE; ++i) {
+        printf("%d : %d\n", i, array[i]);
+    }
+    // Compression is almost done, still need some tests.
     // Consider using fread() and fwrite() instead of fgetc() and fputc()
+    // Consider sorting with a stable algorithm
+    // Find alternative way to communicate the dictionary
+
     //TODO: Decompression
 
     return 0;
