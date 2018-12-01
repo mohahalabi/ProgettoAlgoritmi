@@ -1,39 +1,13 @@
-/*
-Shannon-Fano implementation.
-****************************************************************************
-Author: Mohammad Halabi
-Programming language: C standard version 99
-This is a prototype implementation which will be developed during the
-third semester as a project of algorithms and data structures course.
 
-****************************************************************************
-*/
+#ifndef COMPRESSOR_COMPRESSION_H
+#define COMPRESSOR_COMPRESSION_H
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <malloc.h>
 #include <string.h>
-
+#include "Structures.h"
 
 #define MAX_CODE 256
-
-
-/******************************* Structures ********************************/
-
-typedef struct element {
-    unsigned char word;
-    int frequency;
-} Element;
-
-typedef struct node {
-    int start, end;
-    struct node *rightChild;
-    struct node *leftChild;
-} Node;
-
-typedef struct code {
-    char code[MAX_CODE];
-} Code;
-
 
 /********************** Functions Declaration ******************************/
 
@@ -61,13 +35,12 @@ void writeByte(FILE *file);
 
 void addBit(unsigned char bit, FILE *file);
 
-void reduceAndWriteBits(int n, FILE *file);
+void writeDictionaryCanonical(Code *dict, FILE *outputFile, Element *ptrElements);
 
-void writeDictionaryOnCompressedFile(Code *dict, FILE *outputFile);
+void writeCompressedFile(FILE *inputFile, FILE *outputFile, Code *dict, Element *ptrElements);
 
-void writeDictionaryCanonica(Code *dict, FILE *outputFile);
+void print(Code *codes);
 
-void writeCompressedFile(FILE *inputFile, FILE *outputFile, Code *dic);
 
 /************************ Functions Definition *****************************/
 
@@ -93,15 +66,21 @@ void calculateFrequencies(FILE *file, Element *ptrElements) {
 }
 
 
-int compare(const void *a, const void *b) {
+int compareStabilized(const void *a, const void *b) {
     Element *element1 = (Element *) a;
     Element *element2 = (Element *) b;
-    return (element2->frequency - element1->frequency);
+    if (element1->frequency < element2->frequency) {
+        return 1;
+    } else if (element1->frequency > element2->frequency) {
+        return -1;
+    } else {  // if zero order by word
+        return element1->word - element2->word;
+    }
 }
 
 
 void orderDesc(Element *ptrElements) {
-    qsort(ptrElements, MAX_CODE, sizeof(Element), compare);
+    qsort(ptrElements, MAX_CODE, sizeof(Element), compareStabilized);
 }
 
 
@@ -206,58 +185,27 @@ void addBit(unsigned char bit, FILE *file) {
     }
 }
 
-
-void reduceAndWriteBits(int n, FILE *file) {
-
-    // Size of an integer is assumed to be 32 bits
-    // but my number can't be more than 255 =2^8 -1, so I extract
-    // just the 8 LSB from 32 bits
-    for (int i = 7; i >= 0; --i) {
-        int k = n >> i;
-        if (k & 1)
-            addBit(1, file);
-        else
-            addBit(0, file);
-        bitsNumber++;
-    }
-}
-
-// I write the dictionary like that: 8 bits to indicate how many bits the word
-// is long, and then directly I write the word.
-// for example: the word 1010 (its length is 4 bits) is coded: 00000100 1010
-void writeDictionaryOnCompressedFile(Code *dict, FILE *outputFile) {
-
+void writeDictionaryCanonical(Code *dict, FILE *outputFile, Element *ptrElements) {
     for (int i = 0; i < MAX_CODE; ++i) {
-        int length = strlen(dict[i].code);
-        reduceAndWriteBits(length, outputFile);
-        for (int j = 0; j < length; ++j) {
-            addBit((unsigned char) dict[i].code[j], outputFile);
-            bitsNumber++;
+        if (ptrElements[i].frequency == 0) {
+            fputc(0, outputFile);
+        } else {
+            unsigned char length = (unsigned char) strlen(dict[i].code);
+            fputc(length, outputFile);
         }
-    }
-}
-
-unsigned char array[MAX_CODE];
-
-void writeDictionaryCanonica(Code *dict, FILE *outputFile) {
-    for (int i = 0; i < MAX_CODE; ++i) {
-        int length = strlen(dict[i].code);
-        reduceAndWriteBits(length, outputFile);
-        array[i] = (unsigned char) length;
         bitsNumber += 8;
     }
 }
 
 
-void writeCompressedFile(FILE *inputFile, FILE *outputFile, Code *dic) {
+void writeCompressedFile(FILE *inputFile, FILE *outputFile, Code *dict, Element *ptrElements) {
     int ch;
-    //writeDictionaryOnCompressedFile(dic, outputFile);
     fseek(inputFile, 0, SEEK_SET);
-    writeDictionaryCanonica(dic, outputFile);
+    writeDictionaryCanonical(dict, outputFile, ptrElements);
     while ((ch = fgetc(inputFile)) != EOF) {
-        int length = strlen(dic[ch].code);
+        int length = strlen(dict[ch].code);
         for (int i = 0; i < length; ++i) {
-            addBit((unsigned char) dic[ch].code[i], outputFile);
+            addBit((unsigned char) dict[ch].code[i], outputFile);
         }
         bitsNumber += length;
     }
@@ -275,43 +223,4 @@ void print(Code *codes) {
     }
 }
 
-// main procedure is currently used to test the correct
-// implementation of the other procedures and functions
-int main() {
-
-    Element *table = (Element *) malloc(MAX_CODE * sizeof(Element));
-    Code *codes = (Code *) malloc(MAX_CODE * sizeof(Code));
-    Code *dictionary = (Code *) malloc(MAX_CODE * sizeof(Code));
-    FILE *file = fopen("alice.txt", "rb");
-    initializeTable(table);
-    calculateFrequencies(file, table);
-    printTable(table);
-    orderDesc(table);
-    printf("\nOrdered table(by frequencies):\n");
-    printTable(table);
-    Node *root = createNode(NULL, NULL, 0, MAX_CODE - 1);
-    printf("\nSum of frequencies: %ld\n", sumFrequencies(table, root));
-    printf("Split index: %d\n\n", getSplitIndex(table, root));
-
-    createEncodingTree(table, root);
-    encode(codes, root);
-    writeDictionary(table, dictionary, codes);
-    print(dictionary);
-
-    FILE *compressed = fopen("compressed", "wb");
-
-    writeCompressedFile(file, compressed, dictionary);
-
-    printf("size of compressed file (in bits): %ld", bitsNumber);
-    for (int i = 0; i < MAX_CODE; ++i) {
-        printf("%d : %d\n", i, array[i]);
-    }
-    // Compression is almost done, still need some tests.
-    // Consider using fread() and fwrite() instead of fgetc() and fputc()
-    // Consider sorting with a stable algorithm
-    // Find alternative way to communicate the dictionary
-
-    //TODO: Decompression
-
-    return 0;
-}
+#endif //COMPRESSOR_COMPRESSION_H

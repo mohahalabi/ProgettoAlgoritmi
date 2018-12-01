@@ -3,4 +3,6 @@ project(Compressor C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(Compressor main.c)
+set(SOURCE_FILES Main.c Structures.h CompressionFunctions.h)
+
+add_executable(Compressor ${SOURCE_FILES})
