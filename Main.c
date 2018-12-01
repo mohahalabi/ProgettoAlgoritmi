@@ -44,11 +44,7 @@ int main() {
 
     //qsort(array, MAX_CODE, sizeof(unsigned char), compare1);
     printf("size of compressed file (in bits): %ld", bitsNumber);
-
-    // Compression is almost done, still need some tests.
-    // Consider using fread() and fwrite() instead of fgetc() and fputc()
-    // Consider sorting with a stable algorithm
-    // Find alternative way to communicate the dictionary
+    
 
     //TODO: Decompression
 
