@@ -1,0 +1,61 @@
+ // Recursive function
+    // to generate code lengths
+    // from regular Huffman codes
+    static void code_gen(Node root, int code_length)
+    {
+        if (root == null)
+            return;
+
+        // base case; if the left and right are null
+        // then its a leaf node.
+        if (root.left == null && root.right == null) {
+
+            // check if key is present or not.
+            // If not present add a new treeset
+            // as value along with the key
+            data.putIfAbsent(code_length, new TreeSet<Character>());
+
+            // c is the character in the node
+            data.get(code_length).add(root.c);
+            return;
+        }
+
+        // Add 1 when on going left or right.
+        code_gen(root.left, code_length + 1);
+        code_gen(root.right, code_length + 1);
+    }
+
+
+     // Set initial canonical code=0
+            int c_code = 0, curr_len = 0, next_len = 0;
+
+            for (int i = 0; i < arr.length; i++) {
+                Iterator it = data.get(arr[i]).iterator();
+
+                // code length of current character
+                curr_len = (int)arr[i];
+
+                while (it.hasNext()) {
+
+                    // Display the canonical codes
+                    System.out.println(it.next() + ":"
+                                       + Integer.toBinaryString(c_code));
+
+                    // if values set is not
+                    // completed or if it is
+                    // the last set set code length
+                    // of next character as current
+                    // code length
+                    if (it.hasNext() || i == arr.length - 1)
+                        next_len = curr_len;
+                    else
+                        next_len = (int)arr[i + 1];
+
+                    // Generate canonical code
+                    // for next character using
+                    // regular code length of next
+                    // character
+                    c_code = (c_code + 1) << (next_len - curr_len);
+                }
+            }
+        }
