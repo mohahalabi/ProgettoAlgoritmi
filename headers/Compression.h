@@ -28,13 +28,11 @@ typedef struct code {
 } Code;
 
 typedef struct codeBits {
-
     unsigned long long left;
     unsigned long long mid_left;
     unsigned long long mid_right;
     unsigned long long right;
-
-} Code256;
+} Code256Bits;
 
 /********************** Functions Declaration ******************************/
 
@@ -43,6 +41,8 @@ void printTable(Element *ptrElements);
 void initializeTable(Element *ptrElements);
 
 void calculateFrequencies(FILE *file, Element *ptrElements);
+
+int compareByWord(const void *a, const void *b);
 
 void orderByFreqDesc(Element *ptrElements);
 
@@ -70,7 +70,7 @@ void addBit(unsigned char bit, FILE *file);
 
 void writeLengths(FILE *outputFile, Element *ptrElements);
 
-void writeCompressedFile(FILE *inputFile, FILE *outputFile, Code *dict, Element *ptrElements);
+void writeCompressedFile(FILE *inputFile, FILE *outputFile, Element *ptrElements);
 
 void compress();
 

@@ -7,8 +7,10 @@ void initializeTable(Element *ptrElements) {
     for (int i = 0; i < MAX_CODE; ++i) {
         ptrElements[i].word = (unsigned char) i;
         ptrElements[i].frequency = 0;
+        ptrElements[i].codeLength = 0;
     }
 }
+
 
 void printTable(Element *ptrElements) {
     for (int i = 0; i < MAX_CODE; ++i) {
@@ -37,11 +39,12 @@ int compareByFreqStabilized(const void *a, const void *b) {
     }
 }
 
+
 int compareByCodeLengthStabilized(const void *a, const void *b) {
     Element *element1 = (Element *) a;
     Element *element2 = (Element *) b;
-    int length1 = strlen(element1->code);
-    int length2 = strlen(element2->code);
+    int length1 = element1->codeLength;
+    int length2 = element2->codeLength;
     if (length1 < length2) {
         return -1;
     } else if (length1 > length2) {
@@ -51,13 +54,28 @@ int compareByCodeLengthStabilized(const void *a, const void *b) {
     }
 }
 
+
+int compareByWord(const void *a, const void *b) {
+    Element *element1 = (Element *) a;
+    Element *element2 = (Element *) b;
+    return element1->word - element2->word;
+}
+
+
 void orderByFreqDesc(Element *ptrElements) {
     qsort(ptrElements, MAX_CODE, sizeof(Element), compareByFreqStabilized);
 }
 
+
 void orderBycodeLengthCresc(Element *ptrElements) {
     qsort(ptrElements, MAX_CODE, sizeof(Element), compareByCodeLengthStabilized);
 }
+
+
+void orderByWord(Element *ptrElements) {
+    qsort(ptrElements, MAX_CODE, sizeof(Element), compareByWord);
+}
+
 
 long sumFrequencies(Element *ptrElements, Node *root) {
     long sumOfFrequencies = 0;
@@ -82,14 +100,13 @@ int getSplitIndex(Element *ptrElements, Node *root) {
             splitIndex = i;
             return splitIndex;
         }
-
     }
     return splitIndex;
 }
 
 
 Node *createNode(Node *lNode, Node *rNode, int start, int end) {
-    Node *newNode = (Node *) malloc(sizeof(Node));
+    Node *newNode = malloc(sizeof(Node));
     newNode->leftChild = lNode;
     newNode->rightChild = rNode;
     newNode->start = start;
@@ -142,14 +159,13 @@ void writeCodesForAllElements(Element *ptrElements, Code *ptrCodes) {
         if (ptrElements[targetIndex].frequency > 0) {
             strcpy(ptrElements[targetIndex].code, ptrCodes[targetIndex].code);
             ptrElements[targetIndex].codeLength = (unsigned char) strlen(ptrElements[targetIndex].code);
-        } else {
-            ptrElements[targetIndex].codeLength = 0;
         }
     }
 }
 
-Code256 *getCode256() {
-    Code256 *code256 = malloc(sizeof(Code256));
+
+Code256Bits *getCode256Bits() {
+    Code256Bits *code256 = malloc(sizeof(Code256Bits));
     code256->left = 0;
     code256->mid_left = 0;
     code256->mid_right = 0;
@@ -171,8 +187,7 @@ char *fromNumToChars(long long num, int length) {
 // funzionante per lunghezze di codifiche minori di 64 bits
 void canonizeCodes(Element *ptrElements) {
 
-    orderBycodeLengthCresc(ptrElements);
-    Code256 *code256 = getCode256();
+    Code256Bits *code256 = getCode256Bits();
     int firstLength = ptrElements[0].codeLength;
     for (int i = 0; i < firstLength; ++i) {
         ptrElements[0].code[i] = '0';
@@ -212,6 +227,7 @@ void addBit(unsigned char bit, FILE *file) {
     }
 }
 
+
 void writeLengths(FILE *outputFile, Element *ptrElements) {
     unsigned char lengths[MAX_CODE];
     for (int i = 0; i < MAX_CODE; ++i) {
@@ -219,27 +235,34 @@ void writeLengths(FILE *outputFile, Element *ptrElements) {
         lengths[targetIndex] = ptrElements[i].codeLength;
     }
     fwrite(lengths, sizeof(unsigned char), MAX_CODE, outputFile);
-    bitsNumber += MAX_CODE;
+    bitsNumber += (MAX_CODE * 8);
 }
 
 
-void writeCompressedFile(FILE *inputFile, FILE *outputFile, Code *dict, Element *ptrElements) {
+void writeCompressedFile(FILE *inputFile, FILE *outputFile, Element *ptrElements) {
     int ch;
-    fseek(inputFile, 0, SEEK_SET);
+    fseek(outputFile, 0, SEEK_SET);
     writeLengths(outputFile, ptrElements);
+    fseek(inputFile, 0, SEEK_SET);
     while ((ch = fgetc(inputFile)) != EOF) {
-        int length = strlen(dict[ch].code);
-        for (int i = 0; i < length; ++i) {
-            addBit((unsigned char) dict[ch].code[i], outputFile);
+        for (int i = 0; i < ptrElements[ch].codeLength; ++i) {
+            addBit((unsigned char) ptrElements[ch].code[i], outputFile);
         }
-        bitsNumber += length;
+        bitsNumber += ptrElements[ch].codeLength;
+    }
+    int lastBitsToWrite = 8 - (bitsNumber % 8);
+    // scrivi gli ultimi bits per completare l'ultimo byte, completare con zeri
+    for (int i = 0; i < lastBitsToWrite; ++i) {
+        addBit(0, outputFile);
+        bitsNumber++;
     }
     fclose(outputFile);
+    fclose(inputFile);
 }
 
 void printCodes(Element *ptrElements) {
     for (int i = 0; i < MAX_CODE; ++i) {
-        printf("code of %-4d length:%-4.d ", ptrElements[i].word, ptrElements[i].codeLength);
+        printf("code of %-4d length: %-4d", ptrElements[i].word, ptrElements[i].codeLength);
         for (int j = 0; ptrElements[i].code[j] != '\0'; ++j) {
             printf("%c", ptrElements[i].code[j]);
         }
@@ -248,37 +271,39 @@ void printCodes(Element *ptrElements) {
 }
 
 void compress() {
-    Element *table = (Element *) malloc(MAX_CODE * sizeof(Element));
-    Code *codes = (Code *) malloc(MAX_CODE * sizeof(Code));
-    //Code *dictionary = (Code *) malloc(MAX_CODE * sizeof(Code));
-    FILE *file = fopen("alice.txt", "rb");
-    initializeTable(table);
-    calculateFrequencies(file, table);
-    printTable(table);
-    orderByFreqDesc(table);
+    Element *elements = malloc(MAX_CODE * sizeof(Element));
+    Code *codes = malloc(MAX_CODE * sizeof(Code));
 
-    printf("\nOrdered table(by frequencies):\n");
-    printTable(table);
+    FILE *toCompress = fopen("alice.txt", "rb");
+    initializeTable(elements);
+    calculateFrequencies(toCompress, elements);
+
+    //printTable(elements);
+    orderByFreqDesc(elements);
+
+    //printf("\nOrdered elements(by frequencies):\n");
+    //printTable(elements);
+
     Node *root = createNode(NULL, NULL, 0, MAX_CODE - 1);
-    printf("\nSum of frequencies: %ld\n", sumFrequencies(table, root));
 
-    createEncodingTree(table, root);
+    createEncodingTree(elements, root);
     encode(codes, root);
-    writeCodesForAllElements(table, codes);
-    printCodes(table);
+    writeCodesForAllElements(elements, codes);
     free(codes);
 
-    canonizeCodes(table);
+    //printf("---------------\n");
+    //printCodes(elements);
+    canonizeCodes(elements);
+    //printf("\ncodifica canonica:\n");
+    //printCodes(elements);
+    orderByWord(elements);
+    //printf("\nfinal order:\n");
+    //printCodes(elements);
 
-    printf("\ncodifica canonica:\n");
-    printCodes(table);
+    FILE *compressed = fopen("compressed", "wb");
+    writeCompressedFile(toCompress, compressed, elements);
 
-
-    //FILE *compressed = fopen("compressed", "wb");
-
-    //writeCompressedFile(file, compressed, codes, table);
-
-    //printf("size of compressed file (in bits): %ld\n", bitsNumber);
+    printf("size of compressed file (in bits): %ld\n", bitsNumber);
 
 }
 
