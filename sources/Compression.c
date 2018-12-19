@@ -200,7 +200,9 @@ void canonizeCodes(Element *ptrElements) {
             strcpy(ptrElements[i].code, fromNumToChars(code256->right, currentLength));
         } else if (currentLength > firstLength) {
             code256->right++;
-            code256->right = code256->right << 1;
+            for (int j = 0; j < (currentLength - firstLength); ++j) {
+                code256->right = code256->right << 1;
+            }
             strcpy(ptrElements[i].code, fromNumToChars(code256->right, currentLength));
         }
         firstLength = currentLength;
@@ -274,7 +276,7 @@ void compress() {
     Element *elements = malloc(MAX_CODE * sizeof(Element));
     Code *codes = malloc(MAX_CODE * sizeof(Code));
 
-    FILE *toCompress = fopen("alice.txt", "rb");
+    FILE *toCompress = fopen("immagine.tiff", "rb");
     initializeTable(elements);
     calculateFrequencies(toCompress, elements);
 
@@ -293,6 +295,7 @@ void compress() {
 
     //printf("---------------\n");
     //printCodes(elements);
+    orderBycodeLengthCresc(elements);
     canonizeCodes(elements);
     //printf("\ncodifica canonica:\n");
     //printCodes(elements);
