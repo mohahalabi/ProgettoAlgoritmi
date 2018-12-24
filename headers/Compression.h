@@ -16,7 +16,6 @@ typedef struct element {
     unsigned char codeLength;
 } Element;
 
-
 typedef struct node {
     int start, end;
     struct node *rightChild;
@@ -34,9 +33,7 @@ typedef struct codeBits {
     unsigned long long right;
 } Code256Bits;
 
-/********************** Functions Declaration ******************************/
-
-void printTable(Element *ptrElements);
+/********************** Compression's Functions Declaration ******************************/
 
 void initializeTable(Element *ptrElements);
 

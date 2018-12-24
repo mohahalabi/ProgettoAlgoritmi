@@ -1,20 +1,13 @@
 #include "../headers/Compression.h"
 
 
-/************************ Functions Definition *****************************/
+/************************ Compression's Functions Definition *****************************/
 
 void initializeTable(Element *ptrElements) {
     for (int i = 0; i < MAX_CODE; ++i) {
         ptrElements[i].word = (unsigned char) i;
         ptrElements[i].frequency = 0;
         ptrElements[i].codeLength = 0;
-    }
-}
-
-
-void printTable(Element *ptrElements) {
-    for (int i = 0; i < MAX_CODE; ++i) {
-        printf("word:  %-6d  %-6d\n", ptrElements[i].word, ptrElements[i].frequency);
     }
 }
 
@@ -94,7 +87,7 @@ int getSplitIndex(Element *ptrElements, Node *root) {
     halfOfSum = 1.0 * sumOfFrequencies / 2;
     int from = root->start;
     int to = root->end;
-    for (int i = from; i <= to; i++) {
+    for (int i = from; i < to; i++) {   // potrebbe servire  <= ?
         sum = sum + ptrElements[i].frequency;
         if (sum + ptrElements[i + 1].frequency >= halfOfSum) {
             splitIndex = i;
@@ -211,22 +204,21 @@ void canonizeCodes(Element *ptrElements) {
 
 
 long bitsNumber = 0;    // All the bits written on the compressed file
-unsigned char byte;     // Single byte to write on the compressed file
+unsigned char byte = 0;     // Single byte to write on the compressed file
 int currentBit = 0;     // The current bit to add, when its value is 8, I reset it to 0
-
-void writeByte(FILE *file) {
-    fputc(byte, file);
-    currentBit = 0;
-    byte = 0;
-}
-
 
 void addBit(unsigned char bit, FILE *file) {
     currentBit++;
     byte = byte << 1 | bit;
     if (currentBit == 8) {
         writeByte(file);
+        currentBit = 0;
+        byte = 0;
     }
+}
+
+void writeByte(FILE *file) {
+    fputc(byte, file);
 }
 
 
@@ -242,22 +234,29 @@ void writeLengths(FILE *outputFile, Element *ptrElements) {
 
 
 void writeCompressedFile(FILE *inputFile, FILE *outputFile, Element *ptrElements) {
-    int ch;
-    fseek(outputFile, 0, SEEK_SET);
+
+    fseek(outputFile, 1, SEEK_SET); // lascio spazio per il byte di flag!
     writeLengths(outputFile, ptrElements);
+
     fseek(inputFile, 0, SEEK_SET);
+    fseek(outputFile, MAX_CODE + 1, SEEK_SET);
+    int ch;
     while ((ch = fgetc(inputFile)) != EOF) {
         for (int i = 0; i < ptrElements[ch].codeLength; ++i) {
-            addBit((unsigned char) ptrElements[ch].code[i], outputFile);
+            char bit = ptrElements[ch].code[i];
+            bit == '0' ? addBit(0, outputFile) : addBit(1, outputFile);
         }
         bitsNumber += ptrElements[ch].codeLength;
     }
     int lastBitsToWrite = 8 - (bitsNumber % 8);
-    // scrivi gli ultimi bits per completare l'ultimo byte, completare con zeri
+    // completare l'ultimo byte con zeri
     for (int i = 0; i < lastBitsToWrite; ++i) {
         addBit(0, outputFile);
         bitsNumber++;
     }
+    fseek(outputFile, 0, SEEK_SET);
+    fputc(lastBitsToWrite, outputFile);
+
     fclose(outputFile);
     fclose(inputFile);
 }
@@ -273,18 +272,15 @@ void printCodes(Element *ptrElements) {
 }
 
 void compress() {
+
     Element *elements = malloc(MAX_CODE * sizeof(Element));
     Code *codes = malloc(MAX_CODE * sizeof(Code));
 
-    FILE *toCompress = fopen("immagine.tiff", "rb");
+    FILE *toCompress = fopen("prova.tiff", "rb");
     initializeTable(elements);
     calculateFrequencies(toCompress, elements);
 
-    //printTable(elements);
     orderByFreqDesc(elements);
-
-    //printf("\nOrdered elements(by frequencies):\n");
-    //printTable(elements);
 
     Node *root = createNode(NULL, NULL, 0, MAX_CODE - 1);
 
@@ -293,14 +289,11 @@ void compress() {
     writeCodesForAllElements(elements, codes);
     free(codes);
 
-    //printf("---------------\n");
-    //printCodes(elements);
     orderBycodeLengthCresc(elements);
     canonizeCodes(elements);
-    //printf("\ncodifica canonica:\n");
-    //printCodes(elements);
+
     orderByWord(elements);
-    //printf("\nfinal order:\n");
+
     //printCodes(elements);
 
     FILE *compressed = fopen("compressed", "wb");
