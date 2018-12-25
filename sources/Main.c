@@ -7,7 +7,6 @@ This is a prototype implementation which will be developed during the
 third semester as a project of algorithms and data structures course.
 
 ****************************************************************************
-Byte di flag: indica quanti bit sono stati aggiunti alla fine del file compresso
 */
 
 #include <stdio.h>
