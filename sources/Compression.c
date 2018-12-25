@@ -1,7 +1,8 @@
+#include <time.h>
 #include "../headers/Compression.h"
+#include "../headers/Decompression.h"
 
-
-/************************ Functions Definition *****************************/
+/************************ Compression's Functions Definition *****************************/
 
 void initializeTable(Element *ptrElements) {
     for (int i = 0; i < MAX_CODE; ++i) {
@@ -12,17 +13,19 @@ void initializeTable(Element *ptrElements) {
 }
 
 
-void printTable(Element *ptrElements) {
-    for (int i = 0; i < MAX_CODE; ++i) {
-        printf("word:  %-6d  %-6d\n", ptrElements[i].word, ptrElements[i].frequency);
-    }
+void fileIntoBuffer(FILE *inputFile, unsigned int fileSize, unsigned char *buffer) {
+    fseek(inputFile, 0, SEEK_SET);
+    fread(buffer, sizeof(unsigned char), fileSize, inputFile);
 }
 
 
-void calculateFrequencies(FILE *file, Element *ptrElements) {
-    int ch;
-    while ((ch = fgetc(file)) != EOF) {
+void calculateFrequencies(Element *ptrElements, unsigned char *buffer, int bufferSize) {
+    unsigned char ch;
+    int index = 0;
+    while (index < bufferSize) {
+        ch = buffer[index];
         ptrElements[ch].frequency++;
+        index++;
     }
 }
 
@@ -94,7 +97,7 @@ int getSplitIndex(Element *ptrElements, Node *root) {
     halfOfSum = 1.0 * sumOfFrequencies / 2;
     int from = root->start;
     int to = root->end;
-    for (int i = from; i <= to; i++) {
+    for (int i = from; i < to; i++) {   // potrebbe servire  <= ?
         sum = sum + ptrElements[i].frequency;
         if (sum + ptrElements[i + 1].frequency >= halfOfSum) {
             splitIndex = i;
@@ -211,22 +214,21 @@ void canonizeCodes(Element *ptrElements) {
 
 
 long bitsNumber = 0;    // All the bits written on the compressed file
-unsigned char byte;     // Single byte to write on the compressed file
+unsigned char byte = 0;     // Single byte to write on the compressed file
 int currentBit = 0;     // The current bit to add, when its value is 8, I reset it to 0
-
-void writeByte(FILE *file) {
-    fputc(byte, file);
-    currentBit = 0;
-    byte = 0;
-}
-
 
 void addBit(unsigned char bit, FILE *file) {
     currentBit++;
     byte = byte << 1 | bit;
     if (currentBit == 8) {
         writeByte(file);
+        currentBit = 0;
+        byte = 0;
     }
+}
+
+void writeByte(FILE *file) {
+    fputc(byte, file);
 }
 
 
@@ -241,25 +243,35 @@ void writeLengths(FILE *outputFile, Element *ptrElements) {
 }
 
 
-void writeCompressedFile(FILE *inputFile, FILE *outputFile, Element *ptrElements) {
-    int ch;
-    fseek(outputFile, 0, SEEK_SET);
+void writeCompressedFile(unsigned char *buffer, int bufferSize, FILE *outputFile, Element *ptrElements) {
+
+    fseek(outputFile, 1, SEEK_SET); // lascio spazio per il byte di flag!
     writeLengths(outputFile, ptrElements);
-    fseek(inputFile, 0, SEEK_SET);
-    while ((ch = fgetc(inputFile)) != EOF) {
+
+    fseek(outputFile, MAX_CODE + 1, SEEK_SET);
+
+    unsigned char ch;
+    int index = 0;
+    while (index < bufferSize) {
+        ch = buffer[index];
         for (int i = 0; i < ptrElements[ch].codeLength; ++i) {
-            addBit((unsigned char) ptrElements[ch].code[i], outputFile);
+            char bit = ptrElements[ch].code[i];
+            bit == '0' ? addBit(0, outputFile) : addBit(1, outputFile);
         }
         bitsNumber += ptrElements[ch].codeLength;
+        index++;
     }
     int lastBitsToWrite = 8 - (bitsNumber % 8);
-    // scrivi gli ultimi bits per completare l'ultimo byte, completare con zeri
+    // completare l'ultimo byte con zeri
     for (int i = 0; i < lastBitsToWrite; ++i) {
         addBit(0, outputFile);
         bitsNumber++;
     }
+    // scrivo il byte di flag
+    fseek(outputFile, 0, SEEK_SET);
+    fputc(lastBitsToWrite, outputFile);
+    bitsNumber += 8;
     fclose(outputFile);
-    fclose(inputFile);
 }
 
 void printCodes(Element *ptrElements) {
@@ -272,41 +284,43 @@ void printCodes(Element *ptrElements) {
     }
 }
 
-void compress() {
+void compress(char *toCompFileName, char *compFileName) {
+
+    clock_t start = clock();
+
     Element *elements = malloc(MAX_CODE * sizeof(Element));
     Code *codes = malloc(MAX_CODE * sizeof(Code));
 
-    FILE *toCompress = fopen("immagine.tiff", "rb");
+    FILE *toCompress = fopen(toCompFileName, "rb");
     initializeTable(elements);
-    calculateFrequencies(toCompress, elements);
 
-    //printTable(elements);
+    int bufferSize = getFileSize(toCompress);
+    unsigned char *buffer = malloc(bufferSize * sizeof(unsigned char));
+    fileIntoBuffer(toCompress, (unsigned int) bufferSize, buffer);
+
+    calculateFrequencies(elements, buffer, bufferSize);
+    fclose(toCompress);
+
     orderByFreqDesc(elements);
-
-    //printf("\nOrdered elements(by frequencies):\n");
-    //printTable(elements);
+    //printCodes(elements);
 
     Node *root = createNode(NULL, NULL, 0, MAX_CODE - 1);
-
     createEncodingTree(elements, root);
     encode(codes, root);
     writeCodesForAllElements(elements, codes);
     free(codes);
 
-    //printf("---------------\n");
-    //printCodes(elements);
     orderBycodeLengthCresc(elements);
     canonizeCodes(elements);
-    //printf("\ncodifica canonica:\n");
-    //printCodes(elements);
+
     orderByWord(elements);
-    //printf("\nfinal order:\n");
-    //printCodes(elements);
 
-    FILE *compressed = fopen("compressed", "wb");
-    writeCompressedFile(toCompress, compressed, elements);
+    FILE *compressed = fopen(compFileName, "wb");
+    writeCompressedFile(buffer, bufferSize, compressed, elements);
 
-    printf("size of compressed file (in bits): %ld\n", bitsNumber);
+    clock_t end = clock();
+    double compTime = (double) (end - start) / CLOCKS_PER_SEC;
+    printf("Compression's time: %.5lf seconds\n", compTime);
 
 }
 

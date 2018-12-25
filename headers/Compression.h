@@ -16,7 +16,6 @@ typedef struct element {
     unsigned char codeLength;
 } Element;
 
-
 typedef struct node {
     int start, end;
     struct node *rightChild;
@@ -34,13 +33,11 @@ typedef struct codeBits {
     unsigned long long right;
 } Code256Bits;
 
-/********************** Functions Declaration ******************************/
-
-void printTable(Element *ptrElements);
+/********************** Compression's Functions Declaration ******************************/
 
 void initializeTable(Element *ptrElements);
 
-void calculateFrequencies(FILE *file, Element *ptrElements);
+void calculateFrequencies(Element *ptrElements, unsigned char *buffer, int bufferSize);
 
 int compareByWord(const void *a, const void *b);
 
@@ -70,11 +67,11 @@ void addBit(unsigned char bit, FILE *file);
 
 void writeLengths(FILE *outputFile, Element *ptrElements);
 
-void writeCompressedFile(FILE *inputFile, FILE *outputFile, Element *ptrElements);
-
-void compress();
+void writeCompressedFile(unsigned char *buffer, int bufferSize, FILE *outputFile, Element *ptrElements);
 
 void printCodes(Element *ptrElements);
+
+void compress(char *toCompFileName, char *compFileName);
 
 
 #endif //COMPRESSOR_COMPRESSION_H
