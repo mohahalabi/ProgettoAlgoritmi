@@ -4,7 +4,7 @@
 
 /************************ Compression's Functions Definition *****************************/
 
-void initializeTable(Element *ptrElements) {
+void initializeElements(Element *ptrElements) {
     for (int i = 0; i < MAX_CODE; ++i) {
         ptrElements[i].word = (unsigned char) i;
         ptrElements[i].frequency = 0;
@@ -167,11 +167,11 @@ void writeCodesForAllElements(Element *ptrElements, Code *ptrCodes) {
 }
 
 
-Code256Bits *getCode256Bits() {
-    Code256Bits *code256 = malloc(sizeof(Code256Bits));
-    code256->left = 0;
-    code256->mid_left = 0;
-    code256->mid_right = 0;
+CodeBits *getCodeBits() {
+    CodeBits *code256 = malloc(sizeof(CodeBits));
+//    code256->left = 0;
+//    code256->mid_left = 0;
+//    code256->mid_right = 0;
     code256->right = 0;
     return code256;
 }
@@ -190,7 +190,7 @@ char *fromNumToChars(long long num, int length) {
 // funzionante per lunghezze di codifiche minori di 64 bits
 void canonizeCodes(Element *ptrElements) {
 
-    Code256Bits *code256 = getCode256Bits();
+    CodeBits *code256 = getCodeBits();
     int firstLength = ptrElements[0].codeLength;
     for (int i = 0; i < firstLength; ++i) {
         ptrElements[0].code[i] = '0';
@@ -292,7 +292,7 @@ void compress(char *toCompFileName, char *compFileName) {
     Code *codes = malloc(MAX_CODE * sizeof(Code));
 
     FILE *toCompress = fopen(toCompFileName, "rb");
-    initializeTable(elements);
+    initializeElements(elements);
 
     int bufferSize = getFileSize(toCompress);
     unsigned char *buffer = malloc(bufferSize * sizeof(unsigned char));

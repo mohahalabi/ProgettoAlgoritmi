@@ -27,15 +27,15 @@ typedef struct code {
 } Code;
 
 typedef struct codeBits {
-    unsigned long long left;
-    unsigned long long mid_left;
-    unsigned long long mid_right;
+//    unsigned long long left;
+//    unsigned long long mid_left;
+//    unsigned long long mid_right;
     unsigned long long right;
-} Code256Bits;
+} CodeBits;
 
 /********************** Compression's Functions Declaration ******************************/
 
-void initializeTable(Element *ptrElements);
+void initializeElements(Element *ptrElements);
 
 void calculateFrequencies(Element *ptrElements, unsigned char *buffer, int bufferSize);
 
