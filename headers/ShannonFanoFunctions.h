@@ -52,7 +52,7 @@ void orderBycodeLengthCresc(Element *ptrElements);
 
 void orderByWord(Element *ptrElements);
 
-long sumFrequencies(Element *ptrElements, Node *root);
+long long int sumFrequencies(Element *ptrElements, Node *root);
 
 int getSplitIndex(Element *ptrElements, Node *root);
 

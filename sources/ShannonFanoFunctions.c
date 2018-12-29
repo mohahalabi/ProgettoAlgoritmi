@@ -80,8 +80,8 @@ void orderByWord(Element *ptrElements) {
 }
 
 
-long sumFrequencies(Element *ptrElements, Node *root) {
-    long sumOfFrequencies = 0;
+long long int sumFrequencies(Element *ptrElements, Node *root) {
+    long long int sumOfFrequencies = 0;
     for (int i = root->start; i <= root->end; ++i) {
         sumOfFrequencies = sumOfFrequencies + ptrElements[i].frequency;
     }
@@ -90,7 +90,7 @@ long sumFrequencies(Element *ptrElements, Node *root) {
 
 
 int getSplitIndex(Element *ptrElements, Node *root) {
-    long sumOfFrequencies = sumFrequencies(ptrElements, root);
+    long long int sumOfFrequencies = sumFrequencies(ptrElements, root);
     int splitIndex = 0;
     double halfOfSum;
     long sum = 0;
@@ -184,7 +184,6 @@ char *fromNumToChars(long long num, int length) {
         (num & (1 << i)) ? strcat(code, "1") : strcat(code, "0");
     }
     return code;
-
 }
 
 // funzionante per lunghezze di codifiche minori di 64 bits
