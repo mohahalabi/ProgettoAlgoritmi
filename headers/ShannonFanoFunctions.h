@@ -6,8 +6,12 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <string.h>
+#include <time.h>
 
 #define MAX_CODE 256
+
+
+/*************************** Structures ***********************************/
 
 typedef struct element {
     unsigned char word;
@@ -33,17 +37,20 @@ typedef struct codeBits {
     unsigned long long right;
 } CodeBits;
 
+
 /********************** Compression's Functions Declaration ******************************/
 
 void initializeElements(Element *ptrElements);
 
-void calculateFrequencies(Element *ptrElements, unsigned char *buffer, int bufferSize);
+void fileIntoBuffer(FILE *inputFile, unsigned int fileSize, unsigned char *buffer);
 
-int compareByWord(const void *a, const void *b);
+void calculateFrequencies(Element *ptrElements, unsigned char *buffer, int bufferSize);
 
 void orderByFreqDesc(Element *ptrElements);
 
 void orderBycodeLengthCresc(Element *ptrElements);
+
+void orderByWord(Element *ptrElements);
 
 long sumFrequencies(Element *ptrElements, Node *root);
 
@@ -69,9 +76,30 @@ void writeLengths(FILE *outputFile, Element *ptrElements);
 
 void writeCompressedFile(unsigned char *buffer, int bufferSize, FILE *outputFile, Element *ptrElements);
 
-void printCodes(Element *ptrElements);
+//void printCodes(Element *ptrElements);  //used just for test purposes
 
 void compress(char *toCompFileName, char *compFileName);
+
+
+/********************** Decompression's Functions Declaration ******************************/
+
+unsigned int getFileSize(FILE *inputFile);
+
+void readHeader(FILE *inputFile, Element *ptrElements);
+
+void readCompressedFile(FILE *inputFile, unsigned int bufferSize, unsigned char *buffer);
+
+void createDecodingTree(Node *root, const char *code, int index, unsigned char word);
+
+void decode(Node *root, Element *ptrElements);
+
+int extractBitOnPosition(unsigned char byte, int bitPosition);
+
+char *byteToChars(unsigned char byte);
+
+void writeDecompressedFile(FILE *outputFile, Node *root, unsigned char *buffer, int bufferSize);
+
+void decompress(char *compFileName, char *decompFileName);
 
 
 #endif //COMPRESSOR_COMPRESSION_H

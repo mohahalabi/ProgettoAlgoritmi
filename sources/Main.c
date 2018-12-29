@@ -3,20 +3,16 @@ Shannon-Fano implementation.
 ****************************************************************************
 Author: Mohammad Halabi
 Programming language: C standard version 99
-This is a prototype implementation which will be developed during the
-third semester as a project of algorithms and data structures course.
 
 ****************************************************************************
 */
 
-#include <stdio.h>
-#include <string.h>
-#include "../headers/Compression.h"
-#include "../headers/Decompression.h"
+
+#include "../headers/ShannonFanoFunctions.h"
 
 
 void argsErrorMessage() {
-    printf("Invalid argoments!\n");
+    printf("Invalid arguments!\n");
     printf("Compression's command:\n");
     printf("executableFile -c fileToCompress compressedFileName\n\n");
     printf("Decompression's command:\n");
@@ -57,5 +53,6 @@ int main(int argc, char *argv[]) {
         argsErrorMessage();
         return 1;
     }
+
     return 0;
 }

@@ -1,6 +1,6 @@
-#include <time.h>
-#include "../headers/Compression.h"
-#include "../headers/Decompression.h"
+
+#include "../headers/ShannonFanoFunctions.h"
+
 
 /************************ Compression's Functions Definition *****************************/
 
@@ -214,7 +214,7 @@ void canonizeCodes(Element *ptrElements) {
 
 
 long bitsNumber = 0;    // All the bits written on the compressed file
-unsigned char byte = 0;     // Single byte to write on the compressed file
+unsigned char byte = 0; // Single byte to write on the compressed file
 int currentBit = 0;     // The current bit to add, when its value is 8, I reset it to 0
 
 void addBit(unsigned char bit, FILE *file) {
@@ -274,7 +274,7 @@ void writeCompressedFile(unsigned char *buffer, int bufferSize, FILE *outputFile
     fclose(outputFile);
 }
 
-void printCodes(Element *ptrElements) {
+/*void printCodes(Element *ptrElements) {
     for (int i = 0; i < MAX_CODE; ++i) {
         printf("code of %-4d length: %-4d", ptrElements[i].word, ptrElements[i].codeLength);
         for (int j = 0; ptrElements[i].code[j] != '\0'; ++j) {
@@ -282,11 +282,14 @@ void printCodes(Element *ptrElements) {
         }
         printf("\n");
     }
-}
+}*/
+
+
 
 void compress(char *toCompFileName, char *compFileName) {
 
     clock_t start = clock();
+    printf("Compressing %s #####", toCompFileName);
 
     Element *elements = malloc(MAX_CODE * sizeof(Element));
     Code *codes = malloc(MAX_CODE * sizeof(Code));
@@ -298,6 +301,8 @@ void compress(char *toCompFileName, char *compFileName) {
     unsigned char *buffer = malloc(bufferSize * sizeof(unsigned char));
     fileIntoBuffer(toCompress, (unsigned int) bufferSize, buffer);
 
+
+    printf("#####");
     calculateFrequencies(elements, buffer, bufferSize);
     fclose(toCompress);
 
@@ -308,19 +313,178 @@ void compress(char *toCompFileName, char *compFileName) {
     createEncodingTree(elements, root);
     encode(codes, root);
     writeCodesForAllElements(elements, codes);
+
     free(codes);
+    free(root);
 
     orderBycodeLengthCresc(elements);
     canonizeCodes(elements);
 
+    printf("#####");
     orderByWord(elements);
 
     FILE *compressed = fopen(compFileName, "wb");
     writeCompressedFile(buffer, bufferSize, compressed, elements);
 
+    free(buffer);
+
+    printf("#####(100%%)\n");
     clock_t end = clock();
     double compTime = (double) (end - start) / CLOCKS_PER_SEC;
     printf("Compression's time: %.5lf seconds\n", compTime);
+
+}
+
+
+/************************ Decompression's Functions Definition *****************************/
+
+unsigned int getFileSize(FILE *inputFile) {
+    fseek(inputFile, 0, SEEK_END);
+    unsigned int size = (unsigned int) ftell(inputFile);
+    return size;
+}
+
+int lastBits = 0;
+
+// Il header include 1 byte di flag e 256 bytes di lunghezze
+void readHeader(FILE *inputFile, Element *ptrElements) {
+    unsigned char lengths[MAX_CODE];
+    fseek(inputFile, 0, SEEK_SET);
+    fread(&lastBits, sizeof(unsigned char), 1, inputFile);
+    fread(lengths, sizeof(unsigned char), MAX_CODE, inputFile);
+
+    for (int i = 0; i < MAX_CODE; ++i) {
+        ptrElements[i].word = (unsigned char) i;
+        ptrElements[i].codeLength = lengths[i];
+    }
+}
+
+
+void readCompressedFile(FILE *inputFile, unsigned int bufferSize, unsigned char *buffer) {
+    fseek(inputFile, MAX_CODE + 1, SEEK_SET);
+    fread(buffer, sizeof(unsigned char), bufferSize, inputFile);
+}
+
+
+void createDecodingTree(Node *root, const char *code, int index, unsigned char word) {
+    if (code[index] != '\0') {
+        if (code[index] == '0') {
+            if (root->leftChild == NULL) {
+                Node *lNode = createNode(NULL, NULL, -1, -1);
+                root->leftChild = lNode;
+                index++;
+                createDecodingTree(root->leftChild, code, index, word);
+            } else {
+                index++;
+                createDecodingTree(root->leftChild, code, index, word);
+            }
+        } else {
+            if (root->rightChild == NULL) {
+                Node *rNode = createNode(NULL, NULL, -1, -1);
+                root->rightChild = rNode;
+                index++;
+                createDecodingTree(root->rightChild, code, index, word);
+            } else {
+                index++;
+                createDecodingTree(root->rightChild, code, index, word);
+            }
+        }
+    } else {
+        root->start = word;
+        root->end = word;
+        return;
+    }
+}
+
+
+void decode(Node *root, Element *ptrElements) {
+    for (int i = 0; i < MAX_CODE; ++i) {
+        if (ptrElements[i].codeLength != 0) {
+            createDecodingTree(root, ptrElements[i].code, 0, ptrElements[i].word);
+        }
+    }
+}
+
+
+// 1 <= bit position <= 8
+int extractBitOnPosition(unsigned char byte, int bitPosition) {
+    return (byte & (1 << (8 - bitPosition)) ? '1' : '0');
+}
+
+
+char *byteToChars(unsigned char byte) {
+    char *chars = malloc(8 * sizeof(char));
+    for (int i = 1; i <= 8; ++i) {
+        chars[i - 1] = (char) extractBitOnPosition(byte, i);
+    }
+    return chars;
+}
+
+
+void writeDecompressedFile(FILE *outputFile, Node *root, unsigned char *buffer, int bufferSize) {
+
+    Node *actualRoot = root;
+    unsigned int index = 0;
+
+    while (index < bufferSize) {
+        char *byte = byteToChars(buffer[index]);
+        for (int i = 0; i < 8; ++i) {
+            // trascurare gli ultimi bit che non fanno parte del file originale
+            if (index == bufferSize - 1 && i == (8 - lastBits)) {
+                break;
+            }
+
+            if (byte[i] == '0')
+                root = root->leftChild;
+            else
+                root = root->rightChild;
+
+            if (root->leftChild == NULL && root->rightChild == NULL) {
+                fputc(root->start, outputFile);
+                root = actualRoot;
+            }
+        }
+        free(byte);
+        index++;
+    }
+}
+
+
+void decompress(char *compFileName, char *decompFileName) {
+
+    clock_t start = clock();
+    printf("Decompressing %s #####", compFileName);
+
+    Element *elements = malloc(MAX_CODE * sizeof(Element));
+    Node *root = createNode(NULL, NULL, -1, -1);
+    FILE *compressed = fopen(compFileName, "rb");
+
+    unsigned int fileSize = getFileSize(compressed);
+    unsigned int bufferSize = fileSize - (MAX_CODE + 1);  // size of header = MAX_CODE + 1 = 257
+
+    readHeader(compressed, elements);
+
+    printf("#####");
+
+    orderBycodeLengthCresc(elements);
+    canonizeCodes(elements);
+
+    unsigned char *buffer = malloc(bufferSize * sizeof(unsigned char));
+    readCompressedFile(compressed, bufferSize, buffer);
+    decode(root, elements);
+
+    printf("#####");
+
+    FILE *decompressed = fopen(decompFileName, "wb");
+    writeDecompressedFile(decompressed, root, buffer, bufferSize);
+    fclose(decompressed);
+    free(buffer);
+    free(root);
+
+    printf("#####(100%%)\n");
+    clock_t end = clock();
+    double decompTime = (double) (end - start) / CLOCKS_PER_SEC;
+    printf("Decompression's time: %.5lf seconds\n", decompTime);
 
 }
 
