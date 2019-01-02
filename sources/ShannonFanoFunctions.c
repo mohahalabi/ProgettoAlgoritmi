@@ -438,7 +438,7 @@ void writeDecompressedFile(FILE *outputFile, Node *root, unsigned char *buffer, 
             else
                 root = root->rightChild;
 
-            if (root->leftChild == NULL && root->rightChild == NULL) {
+            if (root->leftChild == NULL) {
                 fputc(root->start, outputFile);
                 root = actualRoot;
             }
